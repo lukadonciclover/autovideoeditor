@@ -1,7 +1,7 @@
 import type { Platform, Project } from "../types";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
-const UNAVAILABLE_MESSAGE = "The media processing service is unavailable. Run `npm run dev` so both the web app and media server start, then try again.";
+const UNAVAILABLE_MESSAGE = "The media processing service is unavailable. Restart the app with `npm run dev`, then try again.";
 
 export async function parseProcessResponse(response: Response): Promise<Project> {
   const body = await response.text();

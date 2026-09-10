@@ -11,7 +11,7 @@ npm run dev
 
 Open the local URL printed by Vite. Choose **Try with a sample video** for a source that can be previewed directly in the browser.
 
-`npm run dev` starts both required processes: the Vite frontend and the media service on port `8787`. Running `npm run dev:web` by itself cannot generate clips. For split-origin deployments, set `VITE_API_URL` to the public media-service origin before building the frontend.
+`npm run dev` starts the Vite frontend and automatically boots the media service on port `8787`. For split-origin deployments, set `VITE_API_URL` to the public media-service origin before building the frontend.
 
 Accounts and sessions are stored in browser `localStorage` for this frontend MVP. Name, email, phone number, generated clips, and edits persist on the same browser and are separated by account. Production authentication should move these records to a secure server-side database and add verified credentials.
 
@@ -35,4 +35,4 @@ To make the media pipeline production-ready:
 4. Burn edited captions into final exports in a render worker.
 5. Replace `src/lib/accounts.ts` with authenticated server endpoints and persist users, projects, and output assets in a database/object store.
 
-The local media service accepts direct public media URLs and YouTube/Vimeo pages. Only process media you own or are authorised to download and repurpose.
+The local media service accepts direct public media URLs and public pages supported by yt-dlp, including major video and social platforms. Private, login-protected, live, DRM-protected, and unsupported pages cannot be downloaded. Only process media you own or are authorised to download and repurpose.

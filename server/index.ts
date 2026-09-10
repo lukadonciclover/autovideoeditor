@@ -20,6 +20,13 @@ const port = Number(process.env.PORT ?? 8787);
 const supportedPlatforms: Platform[] = ["TikTok", "Reels", "Shorts", "LinkedIn"];
 
 app.use(express.json({ limit: "32kb" }));
+app.use((request, response, next) => {
+  response.setHeader("Access-Control-Allow-Origin", request.headers.origin ?? "*");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  if (request.method === "OPTIONS") return response.sendStatus(204);
+  next();
+});
 app.use("/media", express.static(mediaRoot, { maxAge: "1h", acceptRanges: true }));
 app.get("/api/health", (_request, response) => response.json({ status: "ok", ffmpeg: Boolean(ffmpegPath), ffprobe: Boolean(ffprobe.path) }));
 
@@ -47,27 +54,34 @@ async function assertPublicUrl(value: string): Promise<URL> {
   return url;
 }
 
-function isHostedPlatform(url: URL): boolean {
-  return /(^|\.)(youtube\.com|youtu\.be|vimeo\.com)$/.test(url.hostname.toLowerCase());
+function isDirectMediaUrl(url: URL): boolean {
+  return /\.(mp4|m4v|mov|webm|mkv|avi|mpeg|mpg|ogg|ogv)(?:$)/i.test(url.pathname);
 }
 
 async function downloadSource(url: URL, outputPath: string): Promise<void> {
-  if (isHostedPlatform(url)) {
+  if (isDirectMediaUrl(url)) {
+    const response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(120_000) });
+    if (!response.ok || !response.body) throw new Error(`Could not download the direct video (${response.status}).`);
+    const size = Number(response.headers.get("content-length") ?? 0);
+    if (size > 1_000_000_000) throw new Error("Video exceeds the 1 GB processing limit.");
+    await pipeline(Readable.from(response.body as AsyncIterable<Uint8Array>), createWriteStream(outputPath));
+    return;
+  }
+
+  try {
     await youtubeDl.exec(url.toString(), {
       output: outputPath,
-      format: "best[height<=720][ext=mp4]/best[height<=720]/best",
+      format: "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
+      mergeOutputFormat: "mp4",
+      ffmpegLocation: dirname(ffmpegPath!),
+      jsRuntimes: `node:${process.execPath}`,
       noPlaylist: true,
       noWarnings: true,
       maxFilesize: "1G",
     });
-    return;
+  } catch {
+    throw new Error("This URL could not be downloaded. Use a public video page or direct media link; private, login-protected, live, and DRM sources are not supported.");
   }
-
-  const response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(120_000) });
-  if (!response.ok || !response.body) throw new Error(`Could not download the video (${response.status}).`);
-  const size = Number(response.headers.get("content-length") ?? 0);
-  if (size > 1_000_000_000) throw new Error("Video exceeds the 1 GB processing limit.");
-  await pipeline(Readable.fromWeb(response.body), createWriteStream(outputPath));
 }
 
 async function probeDuration(sourcePath: string): Promise<number> {
