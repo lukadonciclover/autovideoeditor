@@ -14,7 +14,7 @@ describe("video analysis", () => {
 
   it("creates editable clips in the platform range", () => {
     const project = analyzeVideo("https://example.com/talk.mp4", "Shorts");
-    expect(project.clips).toHaveLength(4);
+    expect(project.clips).toHaveLength(8);
     expect(project.clips.every((clip) => clip.end - clip.start >= 25 && clip.end - clip.start <= 60)).toBe(true);
     expect(project.clips.every((clip) => clip.captions.length > 0)).toBe(true);
   });

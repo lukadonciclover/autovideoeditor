@@ -25,6 +25,30 @@ const MOMENTS = [
     reason: "Pattern interrupt + memorable conclusion",
     words: ["Your best idea probably won't feel like your best idea at first.", "Useful ideas often arrive looking small and inconvenient.", "Pay attention to the problems people keep working around.", "That friction is trying to tell you something."],
   },
+  {
+    title: "The confidence trap",
+    hook: "Confidence is usually the result, not the requirement.",
+    reason: "Relatable tension + quotable insight",
+    words: ["Confidence is usually the result, not the requirement.", "Waiting to feel ready keeps talented people standing still.", "Take the smallest action that creates new information.", "Clarity catches up once you begin."],
+  },
+  {
+    title: "What growth really costs",
+    hook: "Growth gets easier when you stop protecting your old identity.",
+    reason: "Emotional resonance + identity shift",
+    words: ["Growth gets easier when you stop protecting your old identity.", "Every new level asks you to release a habit that once kept you safe.", "That discomfort is not proof you are failing.", "It is proof the old map has ended."],
+  },
+  {
+    title: "The simplest test",
+    hook: "Here is how you know if an idea is actually useful.",
+    reason: "Immediate promise + practical test",
+    words: ["Here is how you know if an idea is actually useful.", "Can someone explain the result without explaining the process?", "People share outcomes they can picture clearly.", "Make the value obvious before making the solution impressive."],
+  },
+  {
+    title: "Stop chasing motivation",
+    hook: "Motivation is a terrible plan for work that matters.",
+    reason: "Provocative claim + actionable ending",
+    words: ["Motivation is a terrible plan for work that matters.", "Energy changes, attention drifts, and life gets noisy.", "Put the next action where you cannot miss it.", "Good environments outperform good intentions."],
+  },
 ];
 
 export const PLATFORM_LENGTHS: Record<Platform, [number, number]> = {
@@ -76,7 +100,7 @@ export function analyzeVideo(sourceUrl: string, platform: Platform): Project {
 
   const clips = MOMENTS.map((moment, index): Clip => {
     const clipDuration = min + ((seed + index * 9) % Math.max(1, max - min));
-    const start = Math.round(duration * (0.08 + index * 0.2) + (seed % 37));
+    const start = Math.round(duration * (0.06 + index * 0.115) + (seed % 37));
     const id = `clip-${seed}-${index}`;
     return {
       id,
@@ -90,7 +114,7 @@ export function analyzeVideo(sourceUrl: string, platform: Platform): Project {
       aspectRatio: platform === "LinkedIn" ? "1:1" : "9:16",
       captionStyle: "bold",
       captions: captionsFor(moment.words, start, clipDuration, id),
-      color: ["#d7ff3f", "#ff7557", "#91a7ff", "#e8a7ff"][index],
+      color: ["#d7ff3f", "#ff7557", "#91a7ff", "#e8a7ff", "#62d9c2", "#ffc857", "#7cc4ff", "#ff92b2"][index],
     };
   }).sort((a, b) => b.score - a.score);
 
