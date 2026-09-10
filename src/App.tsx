@@ -23,12 +23,12 @@ import {
   Zap,
 } from "lucide-react";
 import { createAccount, projectsFor, restoreSession, saveProject, signIn, signOut, validateAccount } from "./lib/accounts";
-import { analyzeVideo, formatTime, isDirectVideoUrl, isValidVideoUrl, PLATFORM_LENGTHS } from "./lib/analysis";
+import { formatTime, isDirectVideoUrl, isValidVideoUrl, PLATFORM_LENGTHS } from "./lib/analysis";
 import type { Account, AspectRatio, CaptionStyle, Clip, Platform, Project } from "./types";
 
-const DEMO_URL = "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+const DEMO_URL = "https://media.w3.org/2010/05/sintel/trailer.mp4";
 const PLATFORMS: Platform[] = ["TikTok", "Reels", "Shorts", "LinkedIn"];
-const STAGES = ["Reading source", "Finding high-retention moments", "Writing captions", "Scoring clips"];
+const STAGES = ["Downloading source", "Finding high-retention moments", "Writing captions", "Rendering eight MP4 clips"];
 
 function Logo() {
   return <div className="logo"><span><Scissors size={17} strokeWidth={2.8} /></span>CUTWISE</div>;
@@ -79,7 +79,7 @@ function AuthModal({ onClose, onAuthenticated }: { onClose: () => void; onAuthen
 
 interface ScreenProps { account: Account | null; onAuth: () => void; onLibrary: () => void; onSignOut: () => void; onNew: () => void; }
 
-function Landing({ onAnalyze, ...screen }: { onAnalyze: (url: string, platform: Platform) => void } & ScreenProps) {
+function Landing({ onAnalyze, processingError, ...screen }: { onAnalyze: (url: string, platform: Platform) => void; processingError: string } & ScreenProps) {
   const [url, setUrl] = useState("");
   const [platform, setPlatform] = useState<Platform>("TikTok");
   const [error, setError] = useState("");
@@ -113,7 +113,7 @@ function Landing({ onAnalyze, ...screen }: { onAnalyze: (url: string, platform: 
             </div>
             <span className="duration-label">{PLATFORM_LENGTHS[platform][0]}–{PLATFORM_LENGTHS[platform][1]} sec</span>
           </div>
-          {error && <p className="form-error">{error}</p>}
+          {(error || processingError) && <p className="form-error">{error || processingError}</p>}
         </form>
         <button className="demo-link" onClick={() => onAnalyze(DEMO_URL, platform)}><Play size={14} fill="currentColor" /> Try with a sample video</button>
       </section>
@@ -153,9 +153,9 @@ function Processing({ stage, ...screen }: { stage: number } & ScreenProps) {
   );
 }
 
-function ClipCard({ clip, selected, onClick }: { clip: Clip; selected: boolean; onClick: () => void }) {
+function ClipCard({ clip, onClick }: { clip: Clip; onClick: () => void }) {
   return (
-    <button className={`clip-card ${selected ? "selected" : ""}`} onClick={onClick}>
+    <button className="clip-card" onClick={onClick}>
       <div className="clip-thumb" style={{ "--accent": clip.color } as React.CSSProperties}>
         <div className="fake-person"><span /></div>
         <div className="thumb-caption">{clip.hook.split(" ").slice(0, 5).join(" ")}</div>
@@ -166,24 +166,24 @@ function ClipCard({ clip, selected, onClick }: { clip: Clip; selected: boolean; 
         <div><h3>{clip.title}</h3><p>{formatTime(clip.start)} · {Math.round(clip.end - clip.start)} sec</p></div>
       </div>
       <p className="reason"><Sparkles size={13} /> {clip.reason}</p>
+      <span className="open-clip">Open playable clip <ArrowRight /></span>
     </button>
   );
 }
 
 function Results({ project, onOpen, onBack, ...screen }: { project: Project; onOpen: (clip: Clip) => void; onBack: () => void } & ScreenProps) {
-  const [selected, setSelected] = useState(project.clips[0].id);
   return (
     <main className="workspace-page">
       <Header compact {...screen} />
       <section className="results-head">
         <button className="back-link" onClick={onBack}><ArrowLeft /> Projects</button>
         <div><span className="success-pill"><Check /> ANALYSIS COMPLETE</span><h1>Your video has <em>range.</em></h1><p>We found {project.clips.length} moments with strong standalone potential.</p></div>
-        <button className="primary-button" onClick={() => onOpen(project.clips.find((clip) => clip.id === selected)!)}>Edit selected <ArrowRight /></button>
+        <button className="primary-button" onClick={() => onOpen(project.clips[0])}>Open top clip <ArrowRight /></button>
       </section>
       <div className="source-summary"><Film /><div><strong>{project.title}</strong><span>{formatTime(project.duration)} source · {project.clips[0].platform} optimised</span></div><div className="summary-score"><strong>{project.clips[0].score}</strong><span>top score</span></div></div>
       <section className="clips-section">
         <div className="clips-toolbar"><div><h2>Ranked moments</h2><p>Choose a clip to refine.</p></div><button className="filter-button"><LayoutGrid /> Best match <ChevronDown /></button></div>
-        <div className="clip-grid">{project.clips.map((clip) => <ClipCard key={clip.id} clip={clip} selected={selected === clip.id} onClick={() => setSelected(clip.id)} />)}</div>
+        <div className="clip-grid">{project.clips.map((clip) => <ClipCard key={clip.id} clip={clip} onClick={() => onOpen(clip)} />)}</div>
       </section>
     </main>
   );
@@ -199,8 +199,8 @@ function VideoPreview({ project, clip }: { project: Project; clip: Clip }) {
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current) videoRef.current.currentTime = clip.start;
-  }, [clip.start]);
+    if (videoRef.current) videoRef.current.currentTime = clip.mediaUrl ? 0 : clip.start;
+  }, [clip.mediaUrl, clip.start]);
 
   const toggle = () => {
     const video = videoRef.current;
@@ -210,8 +210,8 @@ function VideoPreview({ project, clip }: { project: Project; clip: Clip }) {
 
   return (
     <div className={`video-stage ratio-${clip.aspectRatio.replace(":", "-")}`}>
-      {isDirectVideoUrl(project.sourceUrl) ? (
-        <video ref={videoRef} src={project.sourceUrl} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={(event) => { if (event.currentTarget.currentTime >= clip.end) event.currentTarget.pause(); }} />
+      {clip.mediaUrl || isDirectVideoUrl(project.sourceUrl) ? (
+        <video ref={videoRef} src={clip.mediaUrl ?? project.sourceUrl} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onTimeUpdate={(event) => { if (!clip.mediaUrl && event.currentTarget.currentTime >= clip.end) event.currentTarget.pause(); }} />
       ) : <div className="video-placeholder"><Film /><span>Source preview requires a direct video URL</span></div>}
       <div className={`preview-caption style-${clip.captionStyle}`}>{clip.captions[0]?.text}</div>
       <button className="preview-play" onClick={toggle}>{playing ? <Pause fill="currentColor" /> : <Play fill="currentColor" />}</button>
@@ -231,6 +231,15 @@ function Editor({ project, initialClip, onBack, onUpdate }: { project: Project; 
   };
 
   const exportManifest = () => {
+    if (clip.mediaUrl) {
+      const link = document.createElement("a");
+      link.href = clip.mediaUrl;
+      link.download = `${clip.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.mp4`;
+      link.click();
+      setExported(true);
+      window.setTimeout(() => setExported(false), 2500);
+      return;
+    }
     const spec = { version: 1, source: project.sourceUrl, projectId: project.id, clip, output: { container: "mp4", videoCodec: "h264", burnCaptions: true } };
     const file = new Blob([JSON.stringify(spec, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
@@ -244,7 +253,7 @@ function Editor({ project, initialClip, onBack, onUpdate }: { project: Project; 
 
   return (
     <main className="editor-page">
-      <header className="editor-header"><button className="back-link" onClick={onBack}><ArrowLeft /> All clips</button><Logo /><div><span className="saved"><Check /> Saved</span><button className="primary-button" onClick={exportManifest}>{exported ? <Check /> : <Download />} {exported ? "Manifest downloaded" : "Export"}</button></div></header>
+      <header className="editor-header"><button className="back-link" onClick={onBack}><ArrowLeft /> All clips</button><Logo /><div><span className="saved"><Check /> Saved</span><button className="primary-button" onClick={exportManifest}>{exported ? <Check /> : <Download />} {exported ? "Downloaded" : clip.mediaUrl ? "Download MP4" : "Export"}</button></div></header>
       <div className="editor-layout">
         <section className="preview-panel">
           <div className="preview-top"><div><span>CLIP PREVIEW</span><h2>{clip.title}</h2></div><span className="score-chip"><Sparkles /> {clip.score} score</span></div>
@@ -275,24 +284,39 @@ export default function App() {
   const [project, setProject] = useState<Project | null>(null);
   const [activeClip, setActiveClip] = useState<Clip | null>(null);
   const [stage, setStage] = useState(0);
+  const [processingError, setProcessingError] = useState("");
   const analysisTimer = useRef<number | null>(null);
 
-  const runAnalysis = (url: string, platform: Platform, owner: Account) => {
+  const runAnalysis = async (url: string, platform: Platform, owner: Account) => {
     if (analysisTimer.current !== null) window.clearInterval(analysisTimer.current);
+    setProcessingError("");
     setView("processing");
     setStage(0);
     let current = 0;
     analysisTimer.current = window.setInterval(() => {
       current += 1;
-      if (current >= STAGES.length) {
-        if (analysisTimer.current !== null) window.clearInterval(analysisTimer.current);
-        analysisTimer.current = null;
-        const generated = analyzeVideo(url, platform);
-        setProject(generated);
-        saveProject(owner.id, generated);
-        setView("results");
-      } else setStage(current);
-    }, 620);
+      setStage(Math.min(current, STAGES.length - 1));
+    }, 900);
+    try {
+      const response = await fetch("/api/projects/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceUrl: url, platform }),
+      });
+      const payload = await response.json() as Project | { error: string };
+      if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Video processing failed.");
+      if (analysisTimer.current !== null) window.clearInterval(analysisTimer.current);
+      analysisTimer.current = null;
+      setStage(STAGES.length - 1);
+      setProject(payload);
+      saveProject(owner.id, payload);
+      setView("results");
+    } catch (error) {
+      if (analysisTimer.current !== null) window.clearInterval(analysisTimer.current);
+      analysisTimer.current = null;
+      setProcessingError(error instanceof Error ? error.message : "Video processing failed.");
+      setView("landing");
+    }
   };
 
   const startAnalysis = (url: string, platform: Platform) => {
@@ -340,7 +364,7 @@ export default function App() {
   else if (view === "results" && project) content = <Results project={project} onBack={() => setView("library")} onOpen={(clip) => { setActiveClip(clip); setView("editor"); }} {...screen} />;
   else if (view === "editor" && project && activeClip) content = <Editor project={project} initialClip={activeClip} onBack={() => setView("results")} onUpdate={(updated) => { const changed = { ...project, clips: project.clips.map((clip) => clip.id === updated.id ? updated : clip) }; setActiveClip(updated); setProject(changed); if (account) saveProject(account.id, changed); }} />;
   else if (view === "library" && account) content = <Library account={account} projects={projectsFor(account.id)} onOpen={(saved) => { setProject(saved); setView("results"); }} onAuth={screen.onAuth} onLibrary={screen.onLibrary} onSignOut={screen.onSignOut} onNew={screen.onNew} />;
-  else content = <Landing onAnalyze={startAnalysis} {...screen} />;
+  else content = <Landing onAnalyze={startAnalysis} processingError={processingError} {...screen} />;
 
   return <>{content}{authOpen && <AuthModal onClose={() => { setAuthOpen(false); setPendingAnalysis(null); }} onAuthenticated={handleAuthenticated} />}</>;
 }

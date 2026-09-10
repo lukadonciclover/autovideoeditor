@@ -141,6 +141,8 @@ footer > span { color: #858585; font-size: 12px; }
 .clip-info p { font: 400 9px "DM Mono"; color: #888; margin: 0; }
 .reason { border-top: 1px solid #ebe8e2; color: #77736c; margin: 3px 8px 5px; padding-top: 9px; font-size: 9px; display: flex; align-items: center; gap: 5px; }
 .reason svg { color: #f06449; }
+.open-clip { margin: 8px; padding: 9px 0 3px; border-top: 1px solid #ebe8e2; display: flex; justify-content: space-between; align-items: center; color: #171717; font-size: 10px; font-weight: 800; }
+.open-clip svg { width: 13px; }
 
 .library-head { padding: 75px clamp(24px, 7vw, 100px) 45px; display: flex; align-items: end; justify-content: space-between; }
 .library-head h1 { font-size: clamp(40px, 6vw, 68px); letter-spacing: -4px; line-height: 1; margin: 15px 0 10px; }

@@ -22,6 +22,7 @@ export interface Clip {
   captionStyle: CaptionStyle;
   captions: Caption[];
   color: string;
+  mediaUrl?: string;
 }
 
 export interface Project {
