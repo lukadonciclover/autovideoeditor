@@ -11,6 +11,8 @@ npm run dev
 
 Open the local URL printed by Vite. Choose **Try with a sample video** for a source that can be previewed directly in the browser.
 
+`npm run dev` starts both required processes: the Vite frontend and the media service on port `8787`. Running `npm run dev:web` by itself cannot generate clips. For split-origin deployments, set `VITE_API_URL` to the public media-service origin before building the frontend.
+
 Accounts and sessions are stored in browser `localStorage` for this frontend MVP. Name, email, phone number, generated clips, and edits persist on the same browser and are separated by account. Production authentication should move these records to a secure server-side database and add verified credentials.
 
 ## Commands

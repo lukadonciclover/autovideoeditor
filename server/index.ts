@@ -21,6 +21,7 @@ const supportedPlatforms: Platform[] = ["TikTok", "Reels", "Shorts", "LinkedIn"]
 
 app.use(express.json({ limit: "32kb" }));
 app.use("/media", express.static(mediaRoot, { maxAge: "1h", acceptRanges: true }));
+app.get("/api/health", (_request, response) => response.json({ status: "ok", ffmpeg: Boolean(ffmpegPath), ffprobe: Boolean(ffprobe.path) }));
 
 function run(binary: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {

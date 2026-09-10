@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { createAccount, projectsFor, restoreSession, saveProject, signIn, signOut, validateAccount } from "./lib/accounts";
 import { formatTime, isDirectVideoUrl, isValidVideoUrl, PLATFORM_LENGTHS } from "./lib/analysis";
+import { processVideo } from "./lib/mediaApi";
 import type { Account, AspectRatio, CaptionStyle, Clip, Platform, Project } from "./types";
 
 const DEMO_URL = "https://media.w3.org/2010/05/sintel/trailer.mp4";
@@ -298,13 +299,7 @@ export default function App() {
       setStage(Math.min(current, STAGES.length - 1));
     }, 900);
     try {
-      const response = await fetch("/api/projects/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl: url, platform }),
-      });
-      const payload = await response.json() as Project | { error: string };
-      if (!response.ok || "error" in payload) throw new Error("error" in payload ? payload.error : "Video processing failed.");
+      const payload = await processVideo(url, platform);
       if (analysisTimer.current !== null) window.clearInterval(analysisTimer.current);
       analysisTimer.current = null;
       setStage(STAGES.length - 1);
